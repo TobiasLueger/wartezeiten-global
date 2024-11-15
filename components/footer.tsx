@@ -12,24 +12,7 @@ export default function Footer() {
           </span>
           . All rights reserved.
         </p>
-        <ul className="flex items-center gap-4 text-sm">
-          <li>
-            <a
-              href="/privacy"
-              className="hover:text-gray-300 dark:hover:text-gray-200"
-            >
-              Privacy Policy
-            </a>
-          </li>
-          <li>
-            <a
-              href="/terms"
-              className="hover:text-gray-300 dark:hover:text-gray-200"
-            >
-              Terms of Service
-            </a>
-          </li>
-        </ul>
+        
       </div>
     </footer>
   );
