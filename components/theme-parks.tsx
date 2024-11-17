@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Clock, MapPin, Users, Search } from "lucide-react";
+import { Clock, MapPin, Users, Search, ArrowLeft } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -11,16 +11,23 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 interface Park {
+  isOpen: boolean;
   id: number;
   name: string;
-  country: string;
-  continent: string;
+  country?: string;
+  continent?: string;
   latitude: string;
   longitude: string;
-  timezone: string;
+  timezone?: string;
 }
 
 interface Ride {
@@ -37,14 +44,22 @@ interface Land {
   rides: Ride[];
 }
 
-interface Company {
-  parks: Park[];
-}
-
 interface ParkDetails {
   lands: Land[];
   rides: Ride[];
 }
+
+const Badge: React.FC<{ isOpen: boolean }> = ({ isOpen }) => (
+  <span
+    className={`px-2 py-1 text-xs font-semibold rounded ${
+      isOpen
+        ? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200"
+        : "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200"
+    }`}
+  >
+    {isOpen ? "Open" : "Closed"}
+  </span>
+);
 
 export default function Component() {
   const [parks, setParks] = useState<Park[]>([]);
@@ -61,12 +76,10 @@ export default function Component() {
       try {
         const response = await fetch("/api/parks");
         if (!response.ok) throw new Error("Failed to fetch park data");
-        const companies = await response.json();
+        const parkList = await response.json();
 
-        // Flatten all parks into a single array
-        const allParks = companies.flatMap((company: Company) => company.parks);
-        setParks(allParks);
-        setFilteredParks(allParks); // Default to showing all parks
+        setParks(parkList);
+        setFilteredParks(parkList); // Default to showing all parks
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
@@ -129,7 +142,11 @@ export default function Component() {
     );
   }
 
-  const uniqueCountries = [...new Set(parks.map((park) => park.country))];
+  const uniqueCountries = [
+    ...new Set(parks.filter(Boolean).map((park) => park.country).filter(Boolean)),
+  ];
+
+  console.log(parks);
 
   return (
     <div className="container mx-auto py-2 px-4">
@@ -147,7 +164,11 @@ export default function Component() {
                   />
                   <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground dark:text-gray-400" />
                 </div>
-                <Select onValueChange={(value) => handleCountryChange(value === "all" ? null : value)}>
+                <Select
+                  onValueChange={(value) =>
+                    handleCountryChange(value === "all" ? null : value)
+                  }
+                >
                   <SelectTrigger className="w-64 dark:bg-gray-800 dark:text-white">
                     <SelectValue placeholder="Filter by country" />
                   </SelectTrigger>
@@ -171,20 +192,23 @@ export default function Component() {
                 onClick={() => fetchParkDetails(park.id)}
               >
                 <CardHeader>
-                  <CardTitle>{park.name}</CardTitle>
+                  <CardTitle className="flex items-center justify-between">
+                    {park.name}
+                    <Badge isOpen={park.isOpen} />
+                  </CardTitle>
                   <CardDescription className="flex items-center mt-2">
                     <MapPin className="w-4 h-4 mr-2 dark:text-gray-400" />
-                    {park.country}
+                    {park.country || "Unknown Country"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground dark:text-gray-400">
                     <Users className="w-4 h-4 mr-2 inline" />
-                    {park.continent}
+                    {park.continent || "Unknown Continent"}
                   </p>
                   <p className="text-sm text-muted-foreground dark:text-gray-400">
                     <Clock className="w-4 h-4 mr-2 inline" />
-                    {park.timezone}
+                    {park.timezone || "Unknown Timezone"}
                   </p>
                 </CardContent>
               </Card>
@@ -199,64 +223,79 @@ export default function Component() {
             <>
               <button
                 onClick={() => setSelectedPark(null)}
-                className="text-sm text-muted-foreground hover:text-primary dark:text-gray-400 dark:hover:text-white mb-4"
+                className="text-sm text-muted-foreground hover:text-primary dark:text-gray-400 dark:hover:text-white mb-4 flex justify-center items-center gap-2"
               >
-                ← Back to all parks
+                <ArrowLeft size={18}/> Back to all parks
               </button>
-              <h1 className="text-4xl font-bold mb-4 dark:text-white">Park Details</h1>
+              <h1 className="text-4xl font-bold mb-4 dark:text-white">
+                Park Details
+              </h1>
               <div className="space-y-6">
-              {selectedPark.lands.length > 0 ? (
-                selectedPark.lands.map((land) => (
-                  <div key={land.id} className="space-y-4">
-                    <h2 className="text-2xl font-semibold dark:text-white">{land.name}</h2>
+                {selectedPark.lands.length > 0 ? (
+                  selectedPark.lands.map((land) => (
+                    <div key={land.id} className="space-y-4">
+                      <h2 className="text-2xl font-semibold dark:text-white">
+                        {land.name}
+                      </h2>
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {land.rides.map((ride) => (
+                          <Card
+                            key={ride.id}
+                            className="dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                          >
+                            <CardHeader>
+                              <CardTitle className="flex items-center justify-between">
+                                {ride.name}
+                                <Badge isOpen={ride.is_open} />
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-sm font-bold text-muted-foreground dark:text-white">
+                              <span className="text-sm text-muted-foreground dark:text-gray-400">Waiting Time - </span>{ride.wait_time} minutes
+                              </p>
+                              <p className="text-sm text-muted-foreground dark:text-gray-400">
+                                Last Updated:{" "}
+                                {new Date(
+                                  ride.last_updated
+                                ).toLocaleString()}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div>
+                    <h2 className="text-2xl font-semibold dark:text-white">
+                      Rides
+                    </h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {land.rides.map((ride) => (
-                        <Card key={ride.id} className="dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+                      {selectedPark.rides.map((ride) => (
+                        <Card
+                          key={ride.id}
+                          className="dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                        >
                           <CardHeader>
-                            <CardTitle>{ride.name}</CardTitle>
+                            <CardTitle className="flex items-center justify-between">
+                              {ride.name}
+                              <Badge isOpen={ride.is_open} />
+                            </CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-sm text-muted-foreground dark:text-gray-400">
-                              {ride.is_open ? "Open" : "Closed"}
-                            </p>
                             <p className="text-sm text-muted-foreground dark:text-gray-400">
                               Wait Time: {ride.wait_time} minutes
                             </p>
                             <p className="text-sm text-muted-foreground dark:text-gray-400">
-                              Last Updated: {new Date(ride.last_updated).toLocaleString()}
+                              Last Updated:{" "}
+                              {new Date(ride.last_updated).toLocaleString()}
                             </p>
                           </CardContent>
                         </Card>
                       ))}
                     </div>
                   </div>
-                ))
-              ) : (
-                <div>
-                  <h2 className="text-2xl font-semibold dark:text-white">Rides</h2>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {selectedPark.rides
-                      .map((ride) => (
-                        <Card key={ride.id} className="dark:bg-gray-800 dark:border-gray-700 dark:text-white">
-                          <CardHeader>
-                            <CardTitle>{ride.name}</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-sm text-muted-foreground dark:text-gray-400">
-                              {ride.is_open ? "Open" : "Closed"}
-                            </p>
-                            <p className="text-sm text-muted-foreground dark:text-gray-400">
-                              Wait Time: {ride.wait_time} minutes
-                            </p>
-                            <p className="text-sm text-muted-foreground dark:text-gray-400">
-                              Last Updated: {new Date(ride.last_updated).toLocaleString()}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      ))}
-                  </div>
-                </div>
-              )}
+                )}
               </div>
             </>
           )}

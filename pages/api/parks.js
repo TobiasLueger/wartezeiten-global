@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch data from API
+    // Fetch data from the main API
     const apiUrl = "https://queue-times.com/parks.json";
     if (!apiUrl) {
       throw new Error('API URL is not configured. Please check your environment variables.');
@@ -30,12 +30,41 @@ export default async function handler(req, res) {
       },
     });
 
+    // Flatten parks from companies
+    const companies = response.data;
+    const allParks = companies.flatMap((company) => company.parks);
+
+    // Fetch detailed data for each park and check if it's open
+    const parksWithOpenStatus = await Promise.all(
+      allParks.map(async (park) => {
+        try {
+          const detailsUrl = `https://queue-times.com/parks/${park.id}/queue_times.json`;
+          const parkDetailsResponse = await axios.get(detailsUrl, {
+            timeout: 5000,
+            headers: {
+              'User-Agent': 'Next.js Server',
+            },
+          });
+
+          const parkDetails = parkDetailsResponse.data;
+
+          // Check if any ride is open
+          const isOpen = parkDetails.lands.flatMap((land) => land.rides).some((ride) => ride.is_open);
+
+          return { ...park, isOpen };
+        } catch (err) {
+          console.error(`Error fetching details for park ID ${park.id}:`, err.message);
+          return { ...park, isOpen: false }; // Assume closed if fetching details fails
+        }
+      })
+    );
+
     // Store in cache
-    cache = response.data;
+    cache = parksWithOpenStatus;
     lastFetchTime = Date.now();
 
-    // Respond with data
-    res.status(200).json(cache);
+    // Respond with all parks and their status
+    res.status(200).json(parksWithOpenStatus);
   } catch (error) {
     // Gracefully handle errors
     const statusCode = error.response?.status || 500;
