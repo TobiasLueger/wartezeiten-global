@@ -23,8 +23,8 @@ interface Park {
   isOpen: boolean;
   id: number;
   name: string;
-  country?: string;
-  continent?: string;
+  country: string;
+  continent: string;
   latitude: string;
   longitude: string;
   timezone?: string;
