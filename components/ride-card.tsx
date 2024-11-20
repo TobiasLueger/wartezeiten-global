@@ -10,6 +10,16 @@ interface Ride {
   last_updated: string;
 }
 
+function getWaitTimeColor(waitTime: number): string {
+  if (waitTime <= 15) {
+    return 'dark:text-green-400 text-green-700';
+  } else if (waitTime <= 30) {
+    return 'dark:text-orange-400 text-orange-500';
+  } else {
+    return 'dark:text-red-500 text-red-600';
+  }
+}
+
 export default function RideCard({
   ride,
 }: Readonly<{
@@ -27,8 +37,9 @@ export default function RideCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm font-bold text-muted-foreground dark:text-white">
-        <span className="text-sm text-muted-foreground dark:text-gray-400">Waiting Time - </span>{ride.wait_time} minutes
+        <p className="text-sm font-bold text-muted-foreground">
+          <span className={`text-sm text-muted-foreground dark:text-gray-400`}>Waiting Time - </span>
+          <span className={`text-sm ${getWaitTimeColor(ride.wait_time)}`}>{ride.wait_time} minutes</span>
         </p>
         <p className="text-sm text-muted-foreground dark:text-gray-400">
           Last Updated:{" "}
